@@ -2,11 +2,11 @@
 
 A TypeScript/Cloudflare Workers port of the validated candidate contract from niederme/parcel-gmail-importer, commit 6b49856692d7dc253f352d0b8d732598702716c9. This Site does not access Gmail or parse mail. The existing trusted producer remains responsible for verifying the shipment, merchant, and item privacy.
 
-## Deployment state
+## Deployment requirements
 
-The reference cloud importer is active after verified ledger migration. Its prior local writer is retired, and one authorized external hourly producer supplies candidates. No account-specific deployment identifiers, flags, credentials, history, counts, or timestamps are included here. Use authenticated live status as the authority for an actual deployment.
+Keep new deployments owner-private and start with writes and migration disabled. The platform’s verified identity headers and a privately configured owner digest enforce ownership. Discovery returns static schemas only; service-only requests cannot access user data.
 
-Fresh deployments must remain owner-private and begin with writes/migration disabled. The platform’s verified identity headers and a privately configured owner digest enforce ownership. Discovery returns static schemas only; service-only requests cannot access user data.
+Use authenticated live status to assess a deployment. This guide describes procedures, not the state of any particular account, deployment, writer, or schedule.
 
 ## Secure key management
 
@@ -44,4 +44,4 @@ Tests use synthetic credentials and fake Parcel responses only. The second suite
 
 ## Recovery and changes
 
-Do not delete ledger history or quotas to clear a block. Do not interpret missing active/recent results as a complete account history. Do not change sharing to repair authentication. Migration SQL and metadata are immutable once deployed; append new schema migrations. The Site uses platform D1 only and no separate paid resources were purchased.
+Do not delete ledger history or quotas to clear a block. Do not interpret missing active/recent results as a complete account history. Do not change sharing to repair authentication. Migration SQL and metadata are immutable once deployed; append new schema migrations. Use supported platform-backed D1 bindings and review any hosting costs before enabling additional paid resources.

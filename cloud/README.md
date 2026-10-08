@@ -30,9 +30,9 @@ Only the owner’s trusted platform identity may invoke data-bearing tools. A du
 
 Limits are 20 attempted additions per rolling 24 hours, including failures, and 20 reads per hour. Cached reads can never prove a missing addition did not occur. Redirects are not followed; only HTTP 200 with `success: true` is accepted. The native Worker fetch function is bound to its global receiver and uses manual redirect handling, covered by a Worker-runtime regression test.
 
-## Publication and deployment state
+## Deployment boundaries
 
-The reference cloud deployment is active following verified ledger migration; its previous local writer is retired. One external hourly producer supplies candidates. This repository does not install or modify that schedule, and contains no deployed Site identity, owner digest, private URL, runtime values, real tracking history, or credentials. A fresh deployment starts with writes and migration disabled.
+This repository provides application source only. It does not install a mail-reading producer or scheduler, configure runtime credentials, or identify a deployed instance. Fresh installations start with writes and migration disabled; follow the setup guide and runbook for a separately authorized deployment and coordinated cutover.
 
 ## License and assets
 
