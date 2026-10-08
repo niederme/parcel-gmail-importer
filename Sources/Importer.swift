@@ -1,5 +1,12 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+#if canImport(Darwin)
 import Darwin
+#else
+import Glibc
+#endif
 
 struct Failure: Error { let code: String }
 struct Candidate: Codable {
@@ -105,7 +112,7 @@ func fileCredential(_ path: String) throws -> Data {
     defer { close(fd) }
     var metadata = stat()
     guard fstat(fd, &metadata) == 0, (metadata.st_mode & S_IFMT) == S_IFREG,
-          metadata.st_uid == getuid(), (metadata.st_mode & 0o777) == 0o600,
+          metadata.st_uid == getuid(), [0o400, 0o600].contains(metadata.st_mode & 0o777),
           metadata.st_size > 0, metadata.st_size <= 8192 else { throw Failure(code: "unsafe_env_metadata") }
     var bytes = [UInt8](repeating: 0, count: 8193)
     var count = 0
@@ -118,10 +125,63 @@ func fileCredential(_ path: String) throws -> Data {
     guard count <= 8192, let text = String(bytes: bytes.prefix(count), encoding: .utf8) else { throw Failure(code: "invalid_env_format") }
     return try parseCredential(text)
 }
+func credentialEnvironment(_ environment: [String: String]) throws -> Data? {
+    if environment["PARCEL_API_KEY"] != nil && environment["PARCEL_SECRET_FILE"] != nil {
+        throw Failure(code: "ambiguous_credential_configuration")
+    }
+    guard let value = environment["PARCEL_API_KEY"] else { return nil }
+    // Reuse validation without treating embedded newlines as additional assignments.
+    guard !value.contains("\n"), !value.contains("\r") else { throw Failure(code: "invalid_env_credential") }
+    return try parseCredential("PARCEL_API_KEY=" + value)
+}
+func configuredPath(_ value: String?, fallback: URL) throws -> URL {
+    guard let value else { return fallback }
+    guard value.hasPrefix("/"), !value.contains("\0") else { throw Failure(code: "invalid_configuration_path") }
+    return URL(fileURLWithPath: value).standardizedFileURL
+}
 func key(noninteractive: Bool) throws -> Data {
+    let environment = ProcessInfo.processInfo.environment
+    if let injected = try credentialEnvironment(environment) { return injected }
     let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.resolvingSymlinksInPath()
     let root = executable.deletingLastPathComponent().deletingLastPathComponent()
-    return try fileCredential(root.appendingPathComponent(".env").path)
+    let path = try configuredPath(environment["PARCEL_SECRET_FILE"], fallback: root.appendingPathComponent(".env"))
+    return try fileCredential(path.path)
+}
+func validatePrivateFile(_ fd: Int32) throws {
+    var metadata = stat()
+    guard fstat(fd, &metadata) == 0, (metadata.st_mode & S_IFMT) == S_IFREG,
+          metadata.st_uid == getuid(), (metadata.st_mode & 0o777) == 0o600 else { throw Failure(code: "unsafe_state_metadata") }
+}
+func prepareStateDirectory(_ directory: URL) throws {
+    var metadata = stat()
+    if lstat(directory.path, &metadata) != 0 {
+        guard errno == ENOENT else { throw Failure(code: "state_unavailable") }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
+                                               attributes: [.posixPermissions: 0o700])
+        guard lstat(directory.path, &metadata) == 0 else { throw Failure(code: "state_unavailable") }
+    }
+    guard (metadata.st_mode & S_IFMT) == S_IFDIR, metadata.st_uid == getuid(),
+          (metadata.st_mode & 0o777) == 0o700 else { throw Failure(code: "unsafe_state_metadata") }
+}
+func acquireStateLock(_ directory: URL) throws -> Int32 {
+    let fd = open(directory.appendingPathComponent("lock").path, O_CREAT | O_RDWR | O_NOFOLLOW | O_NONBLOCK, 0o600)
+    guard fd >= 0 else { throw Failure(code: "state_unavailable") }
+    do {
+        try validatePrivateFile(fd)
+        guard flock(fd, LOCK_EX | LOCK_NB) == 0 else { throw Failure(code: "importer_busy") }
+        return fd
+    } catch { close(fd); throw error }
+}
+func loadState(_ url: URL) throws -> State {
+    let fd = open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
+    if fd < 0 {
+        guard errno == ENOENT else { throw Failure(code: "state_unavailable") }
+        return State()
+    }
+    defer { close(fd) }
+    try validatePrivateFile(fd)
+    let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: false)
+    return try JSONDecoder().decode(State.self, from: handle.readToEnd() ?? Data())
 }
 func request(_ path: String, method: String = "GET", body: Data? = nil, credential: Data) async throws -> [String: Any] {
     guard let header = String(data: credential, encoding: .utf8), !header.contains("\n"), !header.contains("\r") else { throw Failure(code: "invalid_credential_encoding") }
@@ -152,8 +212,26 @@ func pairs(_ json: [String: Any]) throws -> Set<String> {
     return out
 }
 func save(_ state: State, to url: URL) throws {
-    try JSONEncoder().encode(state).write(to: url, options: .atomic)
-    chmod(url.path, 0o600)
+    let directory = url.deletingLastPathComponent()
+    let temporary = directory.appendingPathComponent(".state-" + UUID().uuidString)
+    let fd = open(temporary.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
+    guard fd >= 0 else { throw Failure(code: "state_save_failed") }
+    defer { close(fd); unlink(temporary.path) }
+    let data = try JSONEncoder().encode(state)
+    try data.withUnsafeBytes { bytes in
+        var offset = 0
+        while offset < bytes.count {
+            let n = write(fd, bytes.baseAddress!.advanced(by: offset), bytes.count - offset)
+            if n < 0 && errno == EINTR { continue }
+            guard n > 0 else { throw Failure(code: "state_save_failed") }
+            offset += n
+        }
+    }
+    guard fsync(fd) == 0, rename(temporary.path, url.path) == 0 else { throw Failure(code: "state_save_failed") }
+    let parent = open(directory.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+    guard parent >= 0 else { throw Failure(code: "state_save_failed") }
+    defer { close(parent) }
+    guard fsync(parent) == 0 else { throw Failure(code: "state_save_failed") }
 }
 func syntheticTests() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -179,6 +257,34 @@ func syntheticTests() throws {
     for invalid in ["PARCEL_API_KEY=", "PARCEL_API_KEY=a\nPARCEL_API_KEY=b", "OTHER=a", "PARCEL_API_KEY=a b", "PARCEL_API_KEY=\"a\"", "PARCEL_API_KEY=a\rOTHER=b"] {
         try expectFailure { _ = try parseCredential(invalid) }
     }
+    chmod(fixture.path, 0o600)
+    try Data("PARCEL_API_KEY=synthetic-key\n".utf8).write(to: fixture)
+    chmod(fixture.path, 0o400)
+    guard try fileCredential(fixture.path) == Data("synthetic-key".utf8) else { throw Failure(code: "self_test_failed") }
+    guard try credentialEnvironment(["PARCEL_API_KEY": "synthetic-key"]) == Data("synthetic-key".utf8),
+          try credentialEnvironment([:]) == nil else { throw Failure(code: "self_test_failed") }
+    for environment in [["PARCEL_API_KEY": ""], ["PARCEL_API_KEY": "a\n"],
+                        ["PARCEL_API_KEY": "synthetic-key", "PARCEL_SECRET_FILE": "/synthetic"]] {
+        try expectFailure { _ = try credentialEnvironment(environment) }
+    }
+    try expectFailure { _ = try configuredPath("relative", fallback: temp) }
+    let stateDirectory = temp.appendingPathComponent("state")
+    try prepareStateDirectory(stateDirectory)
+    let locked = try acquireStateLock(stateDirectory)
+    defer { flock(locked, LOCK_UN); close(locked) }
+    try expectFailure { _ = try acquireStateLock(stateDirectory) }
+    let stateFile = stateDirectory.appendingPathComponent("state.json")
+    var fixtureState = State(); fixtureState.uncertain.insert("synthetic:pending")
+    fixtureState.attempts = [Date()]; fixtureState.reads = [Date()]
+    try save(fixtureState, to: stateFile)
+    let restored = try loadState(stateFile)
+    guard restored.uncertain.contains("synthetic:pending"), restored.attempts.count == 1,
+          restored.reads.count == 1 else { throw Failure(code: "self_test_failed") }
+    chmod(stateFile.path, 0o644)
+    try expectFailure { _ = try loadState(stateFile) }
+    chmod(stateDirectory.path, 0o755)
+    try expectFailure { try prepareStateDirectory(stateDirectory) }
+    chmod(stateDirectory.path, 0o700)
     let catalog = ["ups": Carrier(name: "UPS", extra_required: nil), "fedex": Carrier(name: "FedEx", extra_required: nil), "swiship": Carrier(name: "Amazon (3rd Party Merchants)", extra_required: nil), "amzlus": Carrier(name: "Amazon US", extra_required: nil), "apple": Carrier(name: "Apple", extra_required: 2)]
     func object(_ merchant: String = "Example Shop", _ carrier: String = "ups", _ tracking: String = "1Z0000000000000000") -> [String: Any] {
         ["merchant_label": merchant, "carrier_code": carrier, "tracking_number": tracking, "verified": ["merchant": true, "tracking": true, "non_amazon_retail": true, "merchant_label_only": true, "requires_extra_data": false]]
@@ -235,7 +341,7 @@ func syntheticTests() throws {
         catch { print("{\"status\":\"blocked\",\"reason\":\"local_operation_failed\"}"); exit(1) }
     }
     static func run() async throws {
-        guard CommandLine.arguments.count == 2 else { throw Failure(code: "usage_self_test_verify_ingest") }
+        guard CommandLine.arguments.count == 2 else { throw Failure(code: "usage_self_test_verify_check_ingest") }
         let requestedMode = CommandLine.arguments[1]
         let noninteractive = requestedMode.hasSuffix("-noninteractive")
         let mode = noninteractive ? String(requestedMode.dropLast("-noninteractive".count)) : requestedMode
@@ -250,15 +356,13 @@ func syntheticTests() throws {
             guard bytes.count <= 4096 else { throw Failure(code: "candidate_too_large") }
             candidate = try validate(bytes, catalog: await loadCatalog())
         }
-        let directory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support/GmailParcelImporter")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        chmod(directory.path, 0o700)
-        let fd = open(directory.appendingPathComponent("lock").path, O_CREAT | O_RDWR, 0o600)
-        guard fd >= 0, flock(fd, LOCK_EX | LOCK_NB) == 0 else { throw Failure(code: "importer_busy") }
+        let defaultState = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support/GmailParcelImporter")
+        let directory = try configuredPath(ProcessInfo.processInfo.environment["PARCEL_STATE_DIR"], fallback: defaultState)
+        try prepareStateDirectory(directory)
+        let fd = try acquireStateLock(directory)
         defer { flock(fd, LOCK_UN); close(fd) }
         let stateURL = directory.appendingPathComponent("state.json")
-        var state = State()
-        if FileManager.default.fileExists(atPath: stateURL.path) { state = try JSONDecoder().decode(State.self, from: Data(contentsOf: stateURL)) }
+        var state = try loadState(stateURL)
         if mode == "ingest", let c = candidate, state.seen.contains(c.pair) || state.uncertain.contains(c.pair) { print("{\"status\":\"skipped_duplicate_or_pending\"}"); return }
         let credential = try key(noninteractive: noninteractive)
         if mode == "verify" || mode == "check" || shouldRefresh(state, now: Date()) {

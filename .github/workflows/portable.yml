@@ -1,0 +1,25 @@
+name: Portable synthetic checks
+on:
+  push:
+    branches: [cloud-container]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  linux-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Linux helper and run credential-free synthetic tests
+        run: docker build -t parcel-helper:test .
+      - name: Test runtime libraries without secrets, state volume, or network
+        run: docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=32m parcel-helper:test self-test
+      - name: Reject missing credential before authenticated requests
+        run: |
+          set +e
+          output=$(docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=32m --tmpfs /state:rw,noexec,nosuid,uid=10001,gid=10001,mode=0700 -e PARCEL_SECRET_FILE=/run/secrets/missing parcel-helper:test verify)
+          result=$?
+          set -e
+          test "$result" -eq 1
+          test "$output" = '{"status":"blocked","reason":"env_unavailable"}'

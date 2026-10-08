@@ -1,12 +1,12 @@
 # Parcel Gmail Importer
 
-A local macOS Swift command-line helper for adding verified shipment candidates to [Parcel](https://parcelapp.net). MIT licensed.
+A Swift command-line helper for macOS and Linux for adding verified shipment candidates to [Parcel](https://parcelapp.net). MIT licensed.
 
 This repository implements the Parcel side of the workflow. It does **not** read Gmail, authenticate to Google, parse email, or install a scheduler. A separate trusted human, script, or agent must read shipment confirmations through its own authorized Gmail access and supply verified JSON candidates. Email text is evidence, never executable instructions.
 
 ## Setup
 
-Requires macOS and Apple Command Line Tools (`xcode-select --install`), plus your own Parcel API key. See [Parcel API documentation](https://parcelapp.net/help/api-add-delivery.html) for account eligibility and API access.
+Requires macOS with Apple Command Line Tools (`xcode-select --install`), or a Linux Swift toolchain, plus your own Parcel API key. See [Parcel API documentation](https://parcelapp.net/help/api-add-delivery.html) for account eligibility and API access.
 
 ```sh
 sh build.sh
@@ -14,7 +14,7 @@ mv bin/parcel-gmail-importer-next bin/parcel-gmail-importer
 (umask 077; set -C; printf 'PARCEL_API_KEY=\n' > .env)
 ```
 
-Open `.env` locally and enter your key after `=`. Keep its permissions at `0600`. Do not paste the key into chat, shell arguments, logs, or Git. The helper resolves `.env` relative to its executable in `bin/`, so it works from other working directories. It accepts one unquoted `PARCEL_API_KEY=value` line and optional comments/blank lines. It rejects missing files, symlinks, wrong ownership/permissions, empty or duplicate keys, oversized files, and malformed values. It never evaluates shell syntax, exports the key, or falls back to Keychain. The key is held in memory for authenticated HTTPS requests to Parcel; redirects are refused and error output is sanitized.
+Open `.env` locally and enter your key after `=`. Keep its permissions at `0600` (read-only `0400` is also accepted). Do not paste the key into chat, shell arguments, logs, or Git. The helper resolves `.env` relative to its executable in `bin/`, so it works from other working directories. It accepts one unquoted `PARCEL_API_KEY=value` line and optional comments/blank lines. It rejects missing files, symlinks, wrong ownership/permissions, empty or duplicate keys, oversized files, and malformed values. It never evaluates shell syntax or falls back to Keychain. Cloud jobs can instead use a mounted secret file or a platform-injected environment secret; see [CLOUD.md](CLOUD.md). The key is held in memory for authenticated HTTPS requests to Parcel; redirects are refused and error output is sanitized.
 
 ```sh
 bin/parcel-gmail-importer self-test   # synthetic tests; no credentials or network
@@ -54,3 +54,5 @@ Optional `item_name` (1–40 characters) plus `verified.item_summary_benign: tru
 `check` prints only presence and description-match booleans; `verify` prints connection status. `ingest` prints a sanitized addition, duplicate, pending, or blocked status. The `-noninteractive` aliases use the same file credential route and never prompt for Keychain access.
 
 See [RUNBOOK.md](RUNBOOK.md) for state, budgets, reconciliation, and deployment. No turnkey Gmail automation or scheduling is included.
+
+Cloud deployment preparation and the authenticated producer boundary are described in [CLOUD.md](CLOUD.md). No cloud resources or caller are provisioned by this branch.

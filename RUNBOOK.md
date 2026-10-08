@@ -4,7 +4,7 @@ Build into the staged `bin/parcel-gmail-importer-next`; self-tests are synthetic
 
 ## Private state and limits
 
-State is stored outside the checkout at `~/Library/Application Support/GmailParcelImporter/state.json` (the legacy directory name is retained for compatibility). Directory permissions are `0700`, files `0600`. A nonblocking descriptor-held `flock` on the existing `lock` file prevents overlapping runs. Do not delete or replace the lock file, or edit state while a helper owns it. Lock contention means defer and retry later.
+Set `PARCEL_STATE_DIR` to an absolute durable private directory for Linux/cloud jobs. By default, state is stored outside the checkout at `~/Library/Application Support/GmailParcelImporter/state.json` (the legacy directory name is retained for compatibility). Directory permissions are `0700`, files `0600`. A nonblocking descriptor-held `flock` on the existing `lock` file prevents overlapping runs. Do not delete or replace the lock file, or edit state while a helper owns it. Lock contention means defer and retry later.
 
 The helper remembers carrier/tracking pairs seen in Parcel or handled locally. Recent/active reads are cached for five minutes during ingestion; `verify` and `check` always refresh. It reserves two reads before refresh and limits itself to 20 per rolling hour. Additions are durably reserved before POST and limited to 20 attempts per rolling 24 hours, including failures. Other clients using the same account are outside these local budgets. Carrier catalog lookup is public and fail-closed; authenticated requests have 30-second per-request timeouts and reject redirects.
 
@@ -20,6 +20,8 @@ An optional scheduler belongs to that upstream integration. This repository crea
 
 ## Privacy
 
-`.env*`, `bin/`, logs, candidate files, progress journals, and state files are ignored. Git ignore does not remove previously tracked files. Review the index and history before publishing. The `.env` loader requires a user-owned regular file with mode `0600`; keep the key inside the helper and never log HTTP headers, bodies, raw responses, or errors.
+`.env*`, `bin/`, logs, candidate files, progress journals, and state files are ignored. Git ignore does not remove previously tracked files. Review the index and history before publishing. The secret-file loader requires a user-owned regular file with mode `0400` or `0600`; keep the key inside the helper and never log HTTP headers, bodies, raw responses, or errors.
 
 Official references: [view deliveries](https://parcelapp.net/help/api-view-deliveries.html), [add delivery](https://parcelapp.net/help/api-add-delivery.html), [carrier catalog](https://api.parcel.app/external/supported_carriers.json).
+
+Cloud preparation retains the same state model; see [CLOUD.md](CLOUD.md) for single-host locking constraints, secret configuration, and cutover gates.
