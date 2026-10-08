@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791468156516,
+      "tag": "0000_sparkling_crystal",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791468331229,
+      "tag": "0001_naive_blue_shield",
+      "breakpoints": true
+    }
+  ]
+}
