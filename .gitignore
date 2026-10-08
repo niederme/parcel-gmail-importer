@@ -1,0 +1,8 @@
+bin/
+.DS_Store
+*.log
+.env*
+state.json
+progress*.json*
+candidates*.json*
+*.dSYM/
