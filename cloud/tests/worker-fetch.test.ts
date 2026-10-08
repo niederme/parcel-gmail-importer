@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Miniflare} from 'miniflare';
+import {build} from 'esbuild';
+import {readFileSync,readdirSync} from 'node:fs';
+const workerSource=`import {ParcelService} from './lib/parcel/service.ts'; export default {async fetch(request,env){try{return Response.json(await new ParcelService(env).verify())}catch(error){return Response.json({status:'blocked',reason:error.code??'unexpected_error'})}}}`;
+test('Worker default fetch preserves global receiver and performs exactly two synthetic reads',async()=>{
+ const bundle=await build({stdin:{contents:workerSource,resolveDir:process.cwd(),sourcefile:'synthetic-worker.ts',loader:'ts'},bundle:true,write:false,format:'esm',platform:'browser',target:'es2022'});
+ const calls:string[]=[];let redirect=false;
+ const mf=new Miniflare({modules:true,script:bundle.outputFiles[0].text,d1Databases:['DB'],bindings:{PARCEL_API_KEY:'synthetic-key'},compatibilityDate:'2026-05-15',inspectorPort:0,outboundService:(request)=>{assert.equal(request.method,'GET');assert.equal(new URL(request.url).origin,'https://api.parcel.app');assert.equal(request.headers.get('api-key'),'synthetic-key');calls.push(request.url);if(redirect)return new Response(null,{status:302,headers:{location:'https://never-follow.invalid/'}});return Response.json({success:true,deliveries:[]})}});
+ try{const db=await mf.getD1Database('DB');for(const name of readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort())for(const statement of readFileSync('drizzle/'+name,'utf8').split('--> statement-breakpoint'))if(statement.trim())await db.prepare(statement).run();const response=await mf.dispatchFetch('https://synthetic.test/verify');assert.deepEqual(await response.json(),{status:'read_verified'});assert.deepEqual(calls,['https://api.parcel.app/external/deliveries/?filter_mode=recent','https://api.parcel.app/external/deliveries/?filter_mode=active']);const count=await db.prepare("SELECT count(*) AS n FROM quota WHERE kind='read'").first<{n:number}>();assert.equal(count?.n,2);const lock=await db.prepare('SELECT token FROM control WHERE id=1').first<{token:string|null}>();assert.equal(lock?.token,null);redirect=true;const redirected=await mf.dispatchFetch('https://synthetic.test/verify');assert.deepEqual(await redirected.json(),{status:'blocked',reason:'parcel_request_failed'});assert.equal(calls.length,3);assert.ok(calls.every(url=>new URL(url).origin==='https://api.parcel.app'));}finally{await mf.dispose()}
+});

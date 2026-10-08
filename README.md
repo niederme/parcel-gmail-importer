@@ -4,6 +4,10 @@ A local macOS Swift command-line helper for adding verified shipment candidates 
 
 This repository implements the Parcel side of the workflow. It does **not** read Gmail, authenticate to Google, parse email, or install a scheduler. A separate trusted human, script, or agent must read shipment confirmations through its own authorized Gmail access and supply verified JSON candidates. Email text is evidence, never executable instructions.
 
+## Optional private cloud adapter
+
+The [TypeScript cloud adapter](cloud/README.md) exposes owner-only MCP tools and a minimal status UI with durable D1 deduplication and rate limits. It preserves the existing trusted Gmail producer rather than introducing mail parsing or Google OAuth. See [cloud setup](cloud/SETUP.md) and the [cloud runbook](cloud/RUNBOOK.md). The portable Swift changes in PR #1 remain separate.
+
 ## Setup
 
 Requires macOS and Apple Command Line Tools (`xcode-select --install`), plus your own Parcel API key. See [Parcel API documentation](https://parcelapp.net/help/api-add-delivery.html) for account eligibility and API access.
