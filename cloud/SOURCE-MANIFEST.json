@@ -1,0 +1,135 @@
+{
+  "format": 1,
+  "source_version": 10,
+  "scope": "Sanitized runtime modules, schema migrations and synthetic tests. Public export is not deployment configuration.",
+  "files": [
+    {
+      "path": "BRIEF-SUMMARY.md",
+      "sha256": "fb058eb834ec0f968e8c8b81f2553902c78d5a2d1b3d9d14f7404d931e86599b"
+    },
+    {
+      "path": "DISCOVERY-PROGRESS.md",
+      "sha256": "4d6832ed01ad045a933b7d46cd647d64cb381e3f5a181803509f127063c82f54"
+    },
+    {
+      "path": "db/schema.ts",
+      "sha256": "4f226d0cba59e86d1034205b421d17a1ae923dd434d7b03d2a302a2617e39eaf"
+    },
+    {
+      "path": "drizzle/0000_sparkling_crystal.sql",
+      "sha256": "03756726a9f5bd7343e810f0458a3040ec5732070c90203d15c950690a0f1c0c"
+    },
+    {
+      "path": "drizzle/0001_naive_blue_shield.sql",
+      "sha256": "b7dfcb408123bfa70f434e47deaa5340dbe5b46d46c1d4fb4e2808a546177a1f"
+    },
+    {
+      "path": "drizzle/0002_brief_summary.sql",
+      "sha256": "fbc8864a875076fd43445bcb4f35191d10221bd3df422b636379ea7bf07f2082"
+    },
+    {
+      "path": "drizzle/0003_lumpy_jean_grey.sql",
+      "sha256": "422e3040b54e8ddf4d5ea11fc8edad20b614eb7cdf88db77579ab33e2660fd7d"
+    },
+    {
+      "path": "drizzle/0004_demonic_squirrel_girl.sql",
+      "sha256": "0529f933cca64985983a5f1fc172ada3ce2775a9f8d792fe23f907ebf2a938a5"
+    },
+    {
+      "path": "drizzle/0005_moaning_sumo.sql",
+      "sha256": "c96c181577fde52e9c679c0f425847195c1423fdd6c99d2b012097837966b0ef"
+    },
+    {
+      "path": "drizzle/meta/0000_snapshot.json",
+      "sha256": "2f99340bdc982851855162344a9c9062b0c794506fffe55c52ae1cc037d84bf2"
+    },
+    {
+      "path": "drizzle/meta/0001_snapshot.json",
+      "sha256": "348d38117976ef94d420a86c5ce7ce0d184a2f83d6ba8913b39260d510cfcd71"
+    },
+    {
+      "path": "drizzle/meta/0002_snapshot.json",
+      "sha256": "50f68a79c8f09b856f14e56d32b244b4b775ccfeea912fab7f43c5bb34a6a60c"
+    },
+    {
+      "path": "drizzle/meta/0003_snapshot.json",
+      "sha256": "894236d08b8789025a9b5126579c4cc0f5fc11c98a65b4094b7c534320b91865"
+    },
+    {
+      "path": "drizzle/meta/0004_snapshot.json",
+      "sha256": "67eaa346eb2382f7cfcb542e3094f7ccd6751d7c97af8904dce8a906378a9e86"
+    },
+    {
+      "path": "drizzle/meta/0005_snapshot.json",
+      "sha256": "393827eba921d17be9d07f6e8a936992cebcfd1e6d2f27b65f1a3ef8a2f9171c"
+    },
+    {
+      "path": "drizzle/meta/_journal.json",
+      "sha256": "1177426a0431535ea2d8861cfdf4853dd6758e0780981b8887151145ee4f489c"
+    },
+    {
+      "path": "lib/parcel/auth.ts",
+      "sha256": "a714255cd7e845258886b4d7803057c478fb6b5e452b7c3427ea9d6fedc78c7f"
+    },
+    {
+      "path": "lib/parcel/brief.ts",
+      "sha256": "f75f6d00b24b3eda11d938c10b8c65310aadb8c43b0affd4079e45c080a43c37"
+    },
+    {
+      "path": "lib/parcel/contract.ts",
+      "sha256": "0dafbb908e3c9f088d0fe5be821585e2b596de32bd19bf6572166e33aa0e1953"
+    },
+    {
+      "path": "lib/parcel/db.ts",
+      "sha256": "b1ac5c55725f7f9c59c73e2a325b6d3ea5cec64d03f9c917e54a988132dc1959"
+    },
+    {
+      "path": "lib/parcel/health.ts",
+      "sha256": "ebe988739d4783e95b98e9d29b5b508ad880a0613cda8ead24eae7e7e85e55b1"
+    },
+    {
+      "path": "lib/parcel/maintenance.ts",
+      "sha256": "8dd2b97d28d91c511c1b79233f58769e67386ed1fe938d723c3aee66bd8b8e63"
+    },
+    {
+      "path": "lib/parcel/mcp.ts",
+      "sha256": "84ceeac9f5bc8e3eadd52c222738dc3f0593b4dc976d52b1342f2842cc199f8a"
+    },
+    {
+      "path": "lib/parcel/progress.ts",
+      "sha256": "18600b16bde2247dcca26683dedf1bfc13a9fd3f697a83773f67eba6819f48e7"
+    },
+    {
+      "path": "lib/parcel/recovery.ts",
+      "sha256": "f87a65c1aae0680a8a4a3815d00a4c07d778ee2aa9c655e7c33f7c31d2973a4c"
+    },
+    {
+      "path": "lib/parcel/service.ts",
+      "sha256": "1443ec58f2b2cf9a3ea46eb4f4134a204c3284d104a401f38ae72fdef4797a66"
+    },
+    {
+      "path": "lib/parcel/timing.ts",
+      "sha256": "359309f3bcc47a99976742d812841cade241e50ad65e1e7aad54aae70a69d47b"
+    },
+    {
+      "path": "tests/d1-integration.test.ts",
+      "sha256": "356687d5b21a18d17b5ede964acda47ce01ca23e950ab290b4590a867f2ad539"
+    },
+    {
+      "path": "tests/parcel.test.ts",
+      "sha256": "de3929c70d686c378f08def8887068ad895d0af53eb227826b682b6ca65087b5"
+    },
+    {
+      "path": "tests/progress.test.ts",
+      "sha256": "bfe2745bd7cf3a48c0fbbf680178c4856004065d817469784077f77b4b84cbe7"
+    },
+    {
+      "path": "tests/timing.test.ts",
+      "sha256": "f3265ea11967142c199fcfe547d006ab96133d3abcc1c341af2af2ddb325a16d"
+    },
+    {
+      "path": "tests/worker-fetch.test.ts",
+      "sha256": "df1a09cbe6a02b1fa020b0f0dbe1aba2c1cea28905468bdc39f231308e88ecea"
+    }
+  ]
+}

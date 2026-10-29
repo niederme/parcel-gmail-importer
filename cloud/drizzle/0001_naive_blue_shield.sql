@@ -1,0 +1,1 @@
+ALTER TABLE `control` ADD `migration_pending` text;
