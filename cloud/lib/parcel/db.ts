@@ -1,3 +1,4 @@
+import {BRIEF_LABEL_RETENTION_MS} from './brief.ts';
 import {Blocked} from './contract.ts';
 export interface Result {meta:{changes:number};results?:Record<string,unknown>[];success?:boolean}
 export interface Statement {bind(...args:unknown[]):Statement;first<T=Record<string,unknown>>():Promise<T|null>;all<T=Record<string,unknown>>():Promise<{results:T[]}>;run():Promise<Result>}
@@ -20,9 +21,9 @@ export async function reserveRead(db:Database,token:string,now:number) {
   const r=await db.batch([q(db,'INSERT INTO quota (id,kind,at) VALUES (?,\'read\',?)',crypto.randomUUID(),now),q(db,'INSERT INTO quota (id,kind,at) VALUES (?,\'read\',?)',crypto.randomUUID(),now)]);
   if(r.some(x=>x.meta.changes!==1)) throw new Blocked('reservation_failed');
 }
-export async function reserveAddition(db:Database,token:string,pair:string,hash:string,now:number) {
+export async function reserveAddition(db:Database,token:string,pair:string,hash:string,now:number,label?:{company:string,item:string|null}) {
   await assertLease(db,token);if(await q(db,'SELECT status FROM ledger WHERE pair=?',pair).first()) throw new Blocked('duplicate_or_pending');
   if(await quotaCount(db,'add',now)>=20) throw new Blocked('daily_add_limit');
-  await db.batch([q(db,'INSERT INTO ledger (pair,status,description_hash,created_at,updated_at) VALUES (?,\'uncertain\',?,?,?)',pair,hash,now,now),q(db,'INSERT INTO quota (id,kind,at) VALUES (?,\'add\',?)',crypto.randomUUID(),now)]);
+  await db.batch([q(db,'INSERT INTO ledger (pair,status,description_hash,created_at,updated_at) VALUES (?,\'uncertain\',?,?,?)',pair,hash,now,now),q(db,'INSERT INTO quota (id,kind,at) VALUES (?,\'add\',?)',crypto.randomUUID(),now),...(label?[q(db,'DELETE FROM brief_labels WHERE attested_at<=? OR attested_at>?',now-BRIEF_LABEL_RETENTION_MS,now),q(db,'INSERT INTO brief_labels(pair,description_hash,company,item,attested_at) VALUES (?,?,?,?,?)',pair,hash,label.company,label.item,now),q(db,'DELETE FROM brief_labels WHERE pair IN (SELECT pair FROM brief_labels ORDER BY attested_at DESC,pair LIMIT -1 OFFSET 600)')]:[])]);
   const row=await q(db,'SELECT status FROM ledger WHERE pair=?',pair).first<{status:string}>();if(row?.status!=='uncertain') throw new Blocked('reservation_failed');
 }

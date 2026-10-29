@@ -12,7 +12,7 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "test": "node --experimental-transform-types --test tests/parcel.test.ts tests/d1-integration.test.ts tests/worker-fetch.test.ts",
+    "test": "node --experimental-transform-types --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "test:ui": "node scripts/test-ui.mjs",
     "check": "npm run test && npm run test:ui && npm run typecheck && npm run build"

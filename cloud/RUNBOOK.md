@@ -45,3 +45,11 @@ Tests use synthetic credentials and fake Parcel responses only. The second suite
 ## Recovery and changes
 
 Do not delete ledger history or quotas to clear a block. Do not interpret missing active/recent results as a complete account history. Do not change sharing to repair authentication. Migration SQL and metadata are immutable once deployed; append new schema migrations. Use supported platform-backed D1 bindings and review any hosting costs before enabling additional paid resources.
+
+## Discovery recovery and summary maintenance
+
+The cloud source now includes durable incremental discovery, sanitized summaries, and bounded transient read recovery. See DISCOVERY-PROGRESS.md and BRIEF-SUMMARY.md. These operations do not install a scheduler or grant Gmail access.
+
+Call parcel_refresh_brief from the existing authorized scheduler independently of Gmail success. It refreshes the underlying cache at 80 minutes of age, shares the existing lease and read budget, and persists retry delays and a six-failure budget. Authentication, malformed results and exhausted retries require review. A successful refresh does not establish delivery to a downstream consumer. parcel_status.pipeline reports those states separately; consumer delivery is explicitly unverified without receiver readback.
+
+Never publish private runtime configuration, source history, owner identities or operational data. SOURCE-MANIFEST.json records the sanitized exported module digests. A deployment must record its own exact source commit separately.
